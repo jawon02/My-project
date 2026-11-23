@@ -12,8 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 84a17aacc128c1941bfa73ee57f32129, type: 3}
   m_Name: TestSpecial
   m_EditorClassIdentifier: Assembly-CSharp::CardData
-  cardName: "\uD2B9\uC218(\uC784\uC2DC)"
+  cardName: "\uC7AC\uC815\uB82C"
   cost: 1
   type: 3
-  value: 6
-  description: "\uD6A8\uACFC \uBBF8\uAD6C\uD604 \uD14C\uC2A4\uD2B8 \uCE74\uB4DC"
+  value: 2
+  upgradedValue: 3
+  description: "Cost 1, Type Special, \uC124\uBA85 \"\uCE74\uB4DC 2\uC7A5 \uB4DC\uB85C\uC6B0\""

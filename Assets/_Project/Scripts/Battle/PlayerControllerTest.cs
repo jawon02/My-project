@@ -56,15 +56,16 @@ public class PlayerControllerTest : MonoBehaviour
 
         // 테스트 준비: 가짜 적(체력 40)과 손패 5장을 직접 만든다.
         dummyEnemy.Init(40);
+        cm.StartRun();      // 런 덱 새로 생성
         cm.StartBattle();
         cm.hand.Clear();
         cm.drawPile.Clear();
         cm.discardPile.Clear();
-        cm.hand.Add(strike);        // 0번
-        cm.hand.Add(guard);         // 1번
-        cm.hand.Add(heavyStrike);   // 2번
-        cm.hand.Add(quickJab);      // 3번
-        cm.hand.Add(special);       // 4번
+        cm.hand.Add(new CardInstance(strike));        // 0번
+        cm.hand.Add(new CardInstance(guard));         // 1번
+        cm.hand.Add(new CardInstance(heavyStrike));   // 2번
+        cm.hand.Add(new CardInstance(quickJab));      // 3번
+        cm.hand.Add(new CardInstance(special));       // 4번
 
         // C1) 타격(비용 1, 공격 6): 에너지 3→2, 적 체력 40→34
         bool ok = p.TryPlayCard(0, dummyEnemy);
@@ -150,15 +151,16 @@ public class PlayerControllerTest : MonoBehaviour
         if (!FindReferences()) return;
         player.InitRun();
         dummyEnemy.Init(40);
+        cardManager.StartRun();
         cardManager.StartBattle();
         cardManager.hand.Clear();
         cardManager.drawPile.Clear();
         cardManager.discardPile.Clear();
-        cardManager.hand.Add(strike);
-        cardManager.hand.Add(guard);
-        cardManager.hand.Add(heavyStrike);
-        cardManager.hand.Add(quickJab);
-        cardManager.hand.Add(special);
+        cardManager.hand.Add(new CardInstance(strike));
+        cardManager.hand.Add(new CardInstance(guard));
+        cardManager.hand.Add(new CardInstance(heavyStrike));
+        cardManager.hand.Add(new CardInstance(quickJab));
+        cardManager.hand.Add(new CardInstance(special));
         cardManager.LogState();
     }
 

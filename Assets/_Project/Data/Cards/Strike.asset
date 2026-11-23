@@ -16,4 +16,5 @@ MonoBehaviour:
   cost: 1
   type: 0
   value: 6
-  description: 
+  upgradedValue: 9
+  description: "\uC784\uC2DC\uC218\uCE58"

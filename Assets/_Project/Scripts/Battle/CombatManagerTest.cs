@@ -40,7 +40,7 @@ public class CombatManagerTest : MonoBehaviour
         EnemyController enemyB = c.enemies[1];   // 리스트 두 번째 적
 
         // ===== 테스트 1: 전투 시작 (플레이어 선공) =====
-        c.player.InitRun();
+        c.StartRun();       // 런 시작 (플레이어 체력 + 런 덱)
         c.StartBattle();
         CheckBool("1. 전투 시작 - 플레이어 턴으로 시작(선공)", c.state == BattleState.PlayerTurn, true);
         Check("1. 전투 시작 - 손패 5장 드로우", c.cardManager.hand.Count, 5);
@@ -119,7 +119,7 @@ public class CombatManagerTest : MonoBehaviour
     public void ManualStart()
     {
         if (!FindReferences()) return;
-        combat.player.InitRun();
+        combat.StartRun();
         combat.StartBattle();
     }
 
@@ -163,10 +163,13 @@ public class CombatManagerTest : MonoBehaviour
     // 새 런 + 새 전투를 시작한 뒤, 손패를 지정한 카드들로 바꾼다. (뽑기 더미 5장은 그대로 남음)
     private void Prepare(params CardData[] handCards)
     {
-        combat.player.InitRun();
+        combat.StartRun();
         combat.StartBattle();
         combat.cardManager.hand.Clear();
-        combat.cardManager.hand.AddRange(handCards);
+        foreach (CardData card in handCards)
+        {
+            combat.cardManager.hand.Add(new CardInstance(card));   // 카드 한 장(CardInstance)으로 만들어 손패에 넣는다
+        }
     }
 
     private bool FindReferences()

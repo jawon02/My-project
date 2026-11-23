@@ -56,7 +56,7 @@ public class CombatManager : MonoBehaviour
         // 플레이 모드 진입 시 자동 시작 (인스펙터에서 끌 수 있다)
         if (startOnPlay && CheckReferences())
         {
-            player.InitRun();   // 런 시작: 플레이어 체력을 최대로
+            StartRun();         // 런 시작: 플레이어 체력 최대 + 런 덱 생성
             StartBattle();
         }
     }
@@ -108,11 +108,32 @@ public class CombatManager : MonoBehaviour
     }
 
     // ---------------------------------------------------------------
+    // 런 시작 (새 게임 한 판의 시작점)
+    // ---------------------------------------------------------------
+
+    /// <summary>
+    /// 새 런(한 판 전체)을 시작한다. 플레이어 체력을 최대로 채우고, 런 덱을 시작 덱 기준으로 새로 만든다.
+    /// 이전 런의 카드 강화 상태는 모두 사라진다. 전투는 시작하지 않는다. (StartBattle을 따로 호출)
+    /// </summary>
+    public void StartRun()
+    {
+        if (!CheckReferences())
+        {
+            return;
+        }
+
+        player.InitRun();         // 플레이어 체력 최대
+        cardManager.StartRun();   // 런 덱 생성 (모든 카드 미강화)
+        state = BattleState.NotStarted;
+        Debug.Log("===== 새 런 시작 =====");
+    }
+
+    // ---------------------------------------------------------------
     // 전투 시작
     // ---------------------------------------------------------------
 
     /// <summary>
-    /// 전투를 시작한다. (플레이어 체력은 건드리지 않는다. 런 시작은 player.InitRun()으로 따로 한다.)
+    /// 전투를 시작한다. (플레이어 체력과 카드 강화 상태는 건드리지 않는다. 런 시작은 StartRun()으로 따로 한다.)
     /// 플레이어가 선공이므로 바로 플레이어 턴이 시작된다.
     /// </summary>
     public void StartBattle()
@@ -349,9 +370,9 @@ public class CombatManager : MonoBehaviour
         player.LogState();
 
         string handText = "";
-        foreach (CardData card in cardManager.hand)
+        foreach (CardInstance card in cardManager.hand)
         {
-            handText += "[" + card.cardName + "(" + card.cost + ")] ";
+            handText += "[" + card.Name + "(" + card.Cost + ")] ";
         }
         Debug.Log("[손패 " + cardManager.hand.Count + "장] " + handText
                   + "  (뽑기 " + cardManager.drawPile.Count + " / 버림 " + cardManager.discardPile.Count + ")");

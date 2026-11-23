@@ -30,7 +30,12 @@ public class CardData : ScriptableObject
 
     [Header("효과 수치")]
     [Min(0)]
-    public int value = 6;                  // 공격 카드면 피해량, 방어 카드면 방어도
+    public int value = 6;                  // 공격 카드면 피해량, 방어 카드면 방어도 (재정렬은 드로우 장수)
+
+    [Min(0)]
+    public int upgradedValue = 0;          // 강화했을 때의 수치 (카드마다 개별 설정)
+                                           // value보다 커야 강화 가능. 강화가 없는 카드는 value와 같게 둔다.
+                                           // 기본값 0이라서, 강화가 필요한 카드는 인스펙터에서 직접 채워야 한다.
 
     [TextArea]
     public string description = "";        // 설명 (지금은 메모 용도)

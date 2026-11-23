@@ -123,27 +123,27 @@ public class PlayerController : MonoBehaviour
             Debug.LogWarning("[Player] 손패에 " + handIndex + "번 카드가 없다.");
             return false;
         }
-        CardData card = cardManager.hand[handIndex];
+        CardInstance card = cardManager.hand[handIndex];   // 손패의 카드 한 장 (강화 상태 포함)
 
         // 2) 효과가 아직 구현되지 않은 카드(Buff, Special)는 사용할 수 없다.
         //    에너지를 쓰기 전에 막으므로 에너지도 그대로, 카드도 손패에 그대로 남는다.
-        if (card.type == CardType.Buff || card.type == CardType.Special)
+        if (card.Type == CardType.Buff || card.Type == CardType.Special)
         {
-            Debug.Log("[Player] '" + card.cardName + "': 아직 구현되지 않은 카드 효과입니다.");
+            Debug.Log("[Player] '" + card.Name + "': 아직 구현되지 않은 카드 효과입니다.");
             return false;
         }
 
         // 3) 공격 카드인데 대상이 없으면 사용할 수 없다. (에너지를 쓰기 전에 막는다)
-        if (card.type == CardType.Attack && target == null)
+        if (card.Type == CardType.Attack && target == null)
         {
             Debug.LogWarning("[Player] 공격 카드는 대상이 필요하다.");
             return false;
         }
 
         // 4) 에너지 확인 및 지불
-        if (!TrySpendEnergy(card.cost))
+        if (!TrySpendEnergy(card.Cost))
         {
-            Debug.Log("[Player] 에너지 부족 - '" + card.cardName + "' (비용 " + card.cost + ") / 현재 에너지 " + energy);
+            Debug.Log("[Player] 에너지 부족 - '" + card.Name + "' (비용 " + card.Cost + ") / 현재 에너지 " + energy);
             return false;
         }
 
@@ -153,24 +153,24 @@ public class PlayerController : MonoBehaviour
         // 6) 사용한 카드를 버림 더미로 이동 (소멸 없음)
         cardManager.DiscardFromHand(handIndex);
 
-        Debug.Log("[Player] 카드 사용: " + card.cardName + " (비용 " + card.cost + ") → 에너지 " + energy + "/" + maxEnergy);
+        Debug.Log("[Player] 카드 사용: " + card.Name + " (비용 " + card.Cost + ") → 에너지 " + energy + "/" + maxEnergy);
         return true;
     }
 
     /// <summary>카드 종류에 따라 효과를 적용한다.</summary>
-    private void ApplyCardEffect(CardData card, Combatant target)
+    private void ApplyCardEffect(CardInstance card, Combatant target)
     {
-        switch (card.type)
+        switch (card.Type)
         {
             case CardType.Attack:
                 // 대상의 방어도가 먼저 깎이고, 막지 못한 피해만 체력에 들어간다. (Combatant가 처리)
-                int hpLost = target.TakeDamage(card.value);
-                Debug.Log("[Player] 공격 " + card.value + " → 적 체력 -" + hpLost + " (남은 체력 " + target.currentHp + ", 남은 방어도 " + target.block + ")");
+                int hpLost = target.TakeDamage(card.Value);   // 강화된 카드면 강화 수치가 적용된다
+                Debug.Log("[Player] 공격 " + card.Value + " → 적 체력 -" + hpLost + " (남은 체력 " + target.currentHp + ", 남은 방어도 " + target.block + ")");
                 break;
 
             case CardType.Defend:
-                combatant.GainBlock(card.value);
-                Debug.Log("[Player] 방어도 +" + card.value + " → 현재 방어도 " + combatant.block);
+                combatant.GainBlock(card.Value);   // 강화된 카드면 강화 수치가 적용된다
+                Debug.Log("[Player] 방어도 +" + card.Value + " → 현재 방어도 " + combatant.block);
                 break;
 
             case CardType.Buff:

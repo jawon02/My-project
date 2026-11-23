@@ -33,7 +33,8 @@ public class CardManagerTest : MonoBehaviour
         Debug.Log("===== CardManager 자동 테스트 시작 =====");
 
         CardManager cm = cardManager;
-        int deckSize = cm.deck.Count;
+        cm.StartRun();                      // 런 시작: 시작 덱으로 런 덱(카드 한 장 한 장)을 만든다
+        int deckSize = cm.runDeck.Count;
         int originalMaxHand = cm.maxHandSize;
         cm.maxHandSize = 10;   // 테스트 시작 전에 기본값 10으로 맞춘다
 
@@ -163,7 +164,7 @@ public class CardManagerTest : MonoBehaviour
     private int CountType(CardManager cm, CardType type)
     {
         int count = 0;
-        foreach (CardData card in cm.deck)
+        foreach (CardData card in cm.startingDeck)
         {
             if (card != null && card.type == type)
             {
