@@ -39,6 +39,7 @@
 
 ## 테스트
 - Claude는 Unity를 직접 실행할 수 없다. 테스트는 사용자가 Unity에서 컴포넌트 우클릭 → `Run Auto Test` 로 실행한다.
-- 결과·에러는 Unity 콘솔 로그로 확인한다. Windows의 에디터 로그 파일: `%LOCALAPPDATA%\Unity\Editor\Editor.log`
+- 결과·에러는 Unity 콘솔 로그로 확인한다. 에디터 로그 파일: `Logs/Editor.log` (프로젝트 폴더 안)
+  (Unity 6.2는 `%LOCALAPPDATA%\Unity\Editor\Editor.log`에 시작 부분만 쓰고 이후 로그는 이 파일에 쓴다)
   (사용자가 "로그 확인해"라고 하면 이 파일의 끝부분을 읽어서 PASS/FAIL 수와 에러를 정리한다)
-- 현재 회귀 기준값 (FAIL 0 기준): CombatantTest 15 / DataTest 12 / CardManagerTest 40 / PlayerControllerTest 37 / EnemyControllerTest 23 / CombatManagerTest 39 / CardUpgradeTest 40 / TargetSelectionTest 56
+- 현재 회귀 기준값 (FAIL 0 기준): CombatantTest 15 / DataTest 12 / CardManagerTest 40 / PlayerControllerTest 37 / EnemyControllerTest 23 / CombatManagerTest 39 / CardUpgradeTest 40 / TargetSelectionTest 56 / StatusEffectTest 78

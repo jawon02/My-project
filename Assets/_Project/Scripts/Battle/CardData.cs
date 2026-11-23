@@ -8,8 +8,8 @@ public enum CardType
 {
     Attack,   // 공격: 적에게 피해
     Defend,   // 방어: 방어도 획득
-    Buff,     // 강화: 버프 부여 (효과 구현은 4단계에서)
-    Special   // 특수: 특수 효과 (효과 구현은 필요할 때 추가)
+    Buff,     // 강화: 상태 효과 부여 (Phase 4)
+    Special   // 특수: 지금은 재정렬(value만큼 드로우)만 있다 (Phase 4)
 }
 
 /// <summary>
@@ -26,6 +26,7 @@ public enum TargetType
 
 /// <summary>
 /// 카드 한 장의 "데이터"만 담는 ScriptableObject.
+/// 
 /// Project 창 우클릭 → Create → Game → Card 로 카드 에셋을 만들 수 있다.
 /// 수치는 코드가 아니라 인스펙터에서 바꾸므로 밸런스 조정이 쉽다.
 /// </summary>
@@ -44,12 +45,20 @@ public class CardData : ScriptableObject
 
     [Header("효과 수치")]
     [Min(0)]
-    public int value = 6;                  // 공격 카드면 피해량, 방어 카드면 방어도 (재정렬은 드로우 장수)
+    public int value = 6;                  // 공격 카드면 피해량, 방어 카드면 방어도, Buff 카드면 효과 수치 (재정렬은 드로우 장수)
 
     [Min(0)]
     public int upgradedValue = 0;          // 강화했을 때의 수치 (카드마다 개별 설정)
                                            // value보다 커야 강화 가능. 강화가 없는 카드는 value와 같게 둔다.
                                            // 기본값 0이라서, 강화가 필요한 카드는 인스펙터에서 직접 채워야 한다.
+
+    [Header("Buff 카드 전용 (다른 종류의 카드는 그대로 둔다)")]
+    public StatusEffectType statusEffect = StatusEffectType.None;   // 걸어 줄 상태 효과
+                                           // 효과 수치는 위의 value(강화 시 upgradedValue)를 쓴다.
+                                           // 감소 효과(약화 등)도 value는 양수로 넣는다. 예) 공격력 감소 2 → value 2
+
+    [Min(0)]
+    public int duration = 0;               // 지속시간(턴). 강화해도 늘어나지 않는다.
 
     [TextArea]
     public string description = "";        // 설명 (지금은 메모 용도)

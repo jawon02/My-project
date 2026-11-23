@@ -130,6 +130,8 @@ GameObject:
   - component: {fileID: 155731901}
   - component: {fileID: 155731900}
   - component: {fileID: 155731899}
+  - component: {fileID: 155731903}
+  - component: {fileID: 155731902}
   m_Layer: 0
   m_Name: CombatManager
   m_TagString: Untagged
@@ -149,7 +151,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c068f39174713db42bc4477e680dd079, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CombatManagerTest
-  combat: {fileID: 0}
+  combat: {fileID: 155731900}
   strike: {fileID: 11400000, guid: 1cce00b5da91fc347b2e68d37a0736bf, type: 2}
   guard: {fileID: 11400000, guid: 717dc9b8e2ff79d41ba3df3e40243ff1, type: 2}
   quickJab: {fileID: 11400000, guid: f91d6e6daa838384987e6b3ae13e4930, type: 2}
@@ -172,9 +174,12 @@ MonoBehaviour:
   - {fileID: 1302103468}
   drawPerTurn: 5
   startOnPlay: 1
-  state: 0
-  turnCount: 0
-  livingEnemies: []
+  state: 1
+  turnCount: 1
+  livingEnemies:
+  - {fileID: 1485952933}
+  - {fileID: 1302103468}
+  selectedEnemyIndex: 0
 --- !u!4 &155731901
 Transform:
   m_ObjectHideFlags: 0
@@ -190,6 +195,32 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &155731902
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 155731898}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a615bd5c3c7461040b6014a7b4e929bd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::StatusEffectTest
+  combat: {fileID: 155731900}
+--- !u!114 &155731903
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 155731898}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb3770073588e18488e86ebf157a42ae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TargetSelectionTest
+  combat: {fileID: 155731900}
 --- !u!1 &300289436
 GameObject:
   m_ObjectHideFlags: 0
@@ -519,9 +550,11 @@ MonoBehaviour:
   quickJab: {fileID: 11400000, guid: f91d6e6daa838384987e6b3ae13e4930, type: 2}
   special: {fileID: 11400000, guid: 9ffe3987d58c71846ab3f03f5441d088, type: 2}
   dummyEnemy:
+    displayName: 
     maxHp: 40
     currentHp: 32
     block: 0
+    statusEffects: []
 --- !u!114 &887291309
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -538,10 +571,12 @@ MonoBehaviour:
   maxEnergy: 3
   cardManager: {fileID: 2061120271}
   combatant:
+    displayName: "\uD50C\uB808\uC774\uC5B4"
     maxHp: 70
     currentHp: 70
     block: 0
-  energy: 1
+    statusEffects: []
+  energy: 3
 --- !u!4 &887291310
 Transform:
   m_ObjectHideFlags: 0
@@ -589,9 +624,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EnemyControllerTest
   enemy: {fileID: 1302103468}
   dummyPlayer:
+    displayName: 
     maxHp: 70
-    currentHp: 63
+    currentHp: 46
     block: 0
+    statusEffects: []
 --- !u!114 &1302103468
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -606,11 +643,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EnemyController
   data: {fileID: 11400000, guid: 93cf3f7e531234645ad396a68aafa736, type: 2}
   combatant:
+    displayName: "2\uBC88 \uC2AC\uB77C\uC784"
     maxHp: 40
-    currentHp: 32
-    block: 5
-  turnIndex: 2
-  nextActionPreview: "\uACF5\uACA9 10"
+    currentHp: 40
+    block: 0
+    statusEffects: []
+  turnIndex: 0
+  nextActionPreview: "\uACF5\uACA9 7"
 --- !u!4 &1302103469
 Transform:
   m_ObjectHideFlags: 0
@@ -658,9 +697,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EnemyControllerTest
   enemy: {fileID: 1485952933}
   dummyPlayer:
+    displayName: 
     maxHp: 70
-    currentHp: 63
+    currentHp: 46
     block: 0
+    statusEffects: []
 --- !u!114 &1485952933
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -675,11 +716,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EnemyController
   data: {fileID: 11400000, guid: 93cf3f7e531234645ad396a68aafa736, type: 2}
   combatant:
+    displayName: "1\uBC88 \uC2AC\uB77C\uC784"
     maxHp: 40
-    currentHp: 32
-    block: 5
-  turnIndex: 2
-  nextActionPreview: "\uACF5\uACA9 10"
+    currentHp: 40
+    block: 0
+    statusEffects: []
+  turnIndex: 0
+  nextActionPreview: "\uACF5\uACA9 7"
 --- !u!4 &1485952934
 Transform:
   m_ObjectHideFlags: 0
@@ -725,9 +768,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CombatantTest
   combatant:
+    displayName: 
     maxHp: 70
     currentHp: 0
     block: 0
+    statusEffects: []
 --- !u!4 &2042335297
 Transform:
   m_ObjectHideFlags: 0
@@ -774,7 +819,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 24586caccf2707f41836587a0fc1d13d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CardManagerTest
-  cardManager: {fileID: 0}
+  cardManager: {fileID: 2061120271}
 --- !u!114 &2061120271
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -799,20 +844,50 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 717dc9b8e2ff79d41ba3df3e40243ff1, type: 2}
   - {fileID: 11400000, guid: 717dc9b8e2ff79d41ba3df3e40243ff1, type: 2}
   - {fileID: 11400000, guid: 9ffe3987d58c71846ab3f03f5441d088, type: 2}
-  runDeck: []
-  drawPile: []
+  runDeck:
+  - data: {fileID: 11400000, guid: 1cce00b5da91fc347b2e68d37a0736bf, type: 2}
+    isUpgraded: 0
+  - data: {fileID: 11400000, guid: 1cce00b5da91fc347b2e68d37a0736bf, type: 2}
+    isUpgraded: 0
+  - data: {fileID: 11400000, guid: 1cce00b5da91fc347b2e68d37a0736bf, type: 2}
+    isUpgraded: 0
+  - data: {fileID: 11400000, guid: 4f7f496209de9f84e97b6d2a9c057adb, type: 2}
+    isUpgraded: 0
+  - data: {fileID: 11400000, guid: f91d6e6daa838384987e6b3ae13e4930, type: 2}
+    isUpgraded: 0
+  - data: {fileID: 11400000, guid: 717dc9b8e2ff79d41ba3df3e40243ff1, type: 2}
+    isUpgraded: 0
+  - data: {fileID: 11400000, guid: 717dc9b8e2ff79d41ba3df3e40243ff1, type: 2}
+    isUpgraded: 0
+  - data: {fileID: 11400000, guid: 717dc9b8e2ff79d41ba3df3e40243ff1, type: 2}
+    isUpgraded: 0
+  - data: {fileID: 11400000, guid: 717dc9b8e2ff79d41ba3df3e40243ff1, type: 2}
+    isUpgraded: 0
+  - data: {fileID: 11400000, guid: 9ffe3987d58c71846ab3f03f5441d088, type: 2}
+    isUpgraded: 0
+  drawPile:
+  - data: {fileID: 11400000, guid: f91d6e6daa838384987e6b3ae13e4930, type: 2}
+    isUpgraded: 0
+  - data: {fileID: 11400000, guid: 717dc9b8e2ff79d41ba3df3e40243ff1, type: 2}
+    isUpgraded: 0
+  - data: {fileID: 11400000, guid: 4f7f496209de9f84e97b6d2a9c057adb, type: 2}
+    isUpgraded: 0
+  - data: {fileID: 11400000, guid: 717dc9b8e2ff79d41ba3df3e40243ff1, type: 2}
+    isUpgraded: 0
+  - data: {fileID: 11400000, guid: 717dc9b8e2ff79d41ba3df3e40243ff1, type: 2}
+    isUpgraded: 0
   hand:
-  - data: {fileID: 0}
+  - data: {fileID: 11400000, guid: 717dc9b8e2ff79d41ba3df3e40243ff1, type: 2}
     isUpgraded: 0
-  - data: {fileID: 0}
+  - data: {fileID: 11400000, guid: 1cce00b5da91fc347b2e68d37a0736bf, type: 2}
     isUpgraded: 0
-  discardPile:
-  - data: {fileID: 0}
+  - data: {fileID: 11400000, guid: 9ffe3987d58c71846ab3f03f5441d088, type: 2}
     isUpgraded: 0
-  - data: {fileID: 0}
+  - data: {fileID: 11400000, guid: 1cce00b5da91fc347b2e68d37a0736bf, type: 2}
     isUpgraded: 0
-  - data: {fileID: 0}
+  - data: {fileID: 11400000, guid: 1cce00b5da91fc347b2e68d37a0736bf, type: 2}
     isUpgraded: 0
+  discardPile: []
 --- !u!4 &2061120272
 Transform:
   m_ObjectHideFlags: 0
@@ -840,8 +915,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ae5295689748bb34da5a9d93004f1e7a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CardUpgradeTest
-  cardManager: {fileID: 0}
-  player: {fileID: 0}
+  cardManager: {fileID: 2061120271}
+  player: {fileID: 887291309}
   strike: {fileID: 11400000, guid: 1cce00b5da91fc347b2e68d37a0736bf, type: 2}
   guard: {fileID: 11400000, guid: 717dc9b8e2ff79d41ba3df3e40243ff1, type: 2}
   heavyStrike: {fileID: 11400000, guid: 4f7f496209de9f84e97b6d2a9c057adb, type: 2}

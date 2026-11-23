@@ -186,7 +186,8 @@ public class CombatManager : MonoBehaviour
                 continue;
             }
             enemy.gameObject.SetActive(true);
-            enemy.InitBattle();
+            enemy.InitBattle();                                  // 체력·방어도·상태 효과 초기화
+            enemy.combatant.displayName = EnemyLabel(enemy);     // 로그용 이름 (예: "1번 슬라임")
             livingEnemies.Add(enemy);   // 리스트 순서 그대로 (= 왼쪽부터)
         }
 
@@ -264,11 +265,14 @@ public class CombatManager : MonoBehaviour
             return false;
         }
 
-        // 어떤 적이 맞았는지 로그로 남긴다. (무작위 공격의 실제 대상 확인용)
-        if (card != null && card.Type == CardType.Attack)
+        // 어떤 적이 맞았는지 로그로 남긴다. (무작위 공격의 실제 대상 확인용, 적에게 거는 Buff 카드 포함)
+        if (card != null && targetEnemies.Count > 0)
         {
             Debug.Log("[Combat] '" + card.Name + "' 대상(" + TargetTypeToText(card.TargetType) + "): " + EnemyListToText(targetEnemies));
         }
+
+        // 카드로 적에게 상태 효과가 걸렸을 수 있으므로 적의 행동 예고를 다시 계산한다.
+        RefreshAllPreviews();
 
         // 카드 효과로 쓰러진 적은 제거한다. (전체 공격이어도 모든 적에게 피해를 준 다음 한 번에 처리)
         RemoveDeadEnemies();
@@ -285,15 +289,16 @@ public class CombatManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 카드의 대상 유형에 따라 공격할 적 목록을 만든다. 공격 카드가 아니면 빈 목록.
+    /// 카드의 대상 유형에 따라 대상 적 목록을 만든다. 공격 카드와 Buff 카드만 적을 대상으로 할 수 있고, 나머지는 빈 목록.
+    /// (Buff 카드의 Target Type이 Self이면 빈 목록 → PlayerController가 플레이어 자신에게 적용한다)
     /// 대상이 없으면(살아 있는 적이 없거나 선택된 적이 없으면) 빈 목록 → PlayerController가 사용 실패 처리한다.
     /// </summary>
     private List<EnemyController> ResolveTargets(CardInstance card)
     {
         List<EnemyController> result = new List<EnemyController>();
-        if (card == null || card.Type != CardType.Attack)
+        if (card == null || (card.Type != CardType.Attack && card.Type != CardType.Buff))
         {
-            return result;   // 방어 카드 등은 적 대상이 필요 없다
+            return result;   // 방어·특수 카드는 적 대상이 필요 없다
         }
 
         switch (card.TargetType)
@@ -335,6 +340,7 @@ public class CombatManager : MonoBehaviour
 
             case TargetType.Self:
                 // 공격 카드의 자기 대상은 허용하지 않는다. 빈 목록을 넘기면 PlayerController가 막는다.
+                // Buff 카드의 Self는 정상이다. 빈 목록을 넘기면 PlayerController가 플레이어에게 건다.
                 break;
         }
         return result;
@@ -426,10 +432,14 @@ public class CombatManager : MonoBehaviour
         }
     }
 
-    /// <summary>전투를 끝낸다. 이후에는 카드 사용과 턴 종료가 모두 무시된다.</summary>
+    /// <summary>
+    /// 전투를 끝낸다. 이후에는 카드 사용과 턴 종료가 모두 무시된다.
+    /// 전투가 끝나면 플레이어와 모든 적의 상태 효과를 지운다. (확정 규칙)
+    /// </summary>
     private void EndBattle(BattleState result)
     {
         state = result;
+        ClearAllStatusEffects();
         if (result == BattleState.Victory)
         {
             Debug.Log("===== 승리! 모든 적을 처치했다. =====");
@@ -557,6 +567,37 @@ public class CombatManager : MonoBehaviour
         }
         EnemyController enemy = enemies[index];
         return enemy != null && !enemy.IsDead && livingEnemies.Contains(enemy);
+    }
+
+    // ---------------------------------------------------------------
+    // 상태 효과 정리
+    // ---------------------------------------------------------------
+
+    /// <summary>살아 있는 모든 적의 행동 예고를 다시 계산한다. (상태 효과가 바뀌었을 때)</summary>
+    private void RefreshAllPreviews()
+    {
+        foreach (EnemyController enemy in livingEnemies)
+        {
+            if (enemy != null)
+            {
+                enemy.RefreshPreview();
+            }
+        }
+    }
+
+    /// <summary>플레이어와 모든 적(쓰러진 적 포함)의 상태 효과를 지우고 예고를 다시 계산한다.</summary>
+    private void ClearAllStatusEffects()
+    {
+        player.combatant.ClearStatusEffects();
+        foreach (EnemyController enemy in enemies)
+        {
+            if (enemy != null)
+            {
+                enemy.combatant.ClearStatusEffects();
+                enemy.RefreshPreview();
+            }
+        }
+        Debug.Log("[효과] 전투 종료 - 모든 상태 효과를 제거했다.");
     }
 
     // ---------------------------------------------------------------

@@ -36,15 +36,18 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     public void InitRun()
     {
-        combatant.Init(startMaxHp);
+        combatant.Init(startMaxHp);   // 체력 최대 + 상태 효과도 모두 지워진다
+        combatant.displayName = "플레이어";
         energy = 0;
         Debug.Log("[Player] 런 시작 - 체력 " + combatant.currentHp + "/" + combatant.maxHp);
     }
 
-    /// <summary>전투 시작 시 호출. 방어도를 0으로 만든다. (체력은 유지)</summary>
+    /// <summary>전투 시작 시 호출. 방어도를 0으로 만들고 상태 효과를 모두 지운다. (체력은 유지)</summary>
     public void StartBattle()
     {
+        combatant.displayName = "플레이어";
         combatant.ResetBlock();
+        combatant.ClearStatusEffects();   // 이전 전투의 효과가 남아 있지 않게 (안전장치)
         energy = 0;
     }
 
@@ -59,11 +62,16 @@ public class PlayerController : MonoBehaviour
         Debug.Log("[Player] 턴 시작 - 방어도 초기화, 에너지 " + energy + "/" + maxEnergy);
     }
 
-    /// <summary>플레이어 턴 종료 시 호출. 남은 에너지는 소멸한다.</summary>
+    /// <summary>
+    /// 플레이어 턴 종료 시 호출. 남은 에너지는 소멸하고,
+    /// 플레이어에게 걸린 상태 효과의 지속시간이 1 줄어든다. (0이 되면 만료)
+    /// 예) 지속시간 2인 효과를 1턴에 쓰면: 1턴 종료 → 1, 2턴 종료 → 0(만료). 사용한 턴 포함 2턴 동안 적용.
+    /// </summary>
     public void EndTurn()
     {
         Debug.Log("[Player] 턴 종료 - 남은 에너지 " + energy + " 소멸");
         energy = 0;
+        combatant.TickStatusEffects();
     }
 
     /// <summary>
@@ -124,7 +132,8 @@ public class PlayerController : MonoBehaviour
     /// 순서(확정): 에너지 확인 및 지불 → 효과 적용 → 버림 더미로 이동.
     /// targets: 공격 카드가 때릴 대상 목록 (누구를 때릴지는 CombatManager가 카드의 대상 유형을 보고 정해서 넘겨준다)
     ///          단일·무작위 공격 = 1명, 전체 공격 = 살아 있는 적 전부(왼쪽부터). 방어 카드는 빈 목록이면 된다.
-    /// 실패하면(에너지 부족, 잘못된 번호, 대상 없음, 효과 미구현 카드 등) 에너지도 카드도 그대로다.
+    ///          Buff 카드도 같다: 적에게 거는 카드는 대상 목록, 자신에게 거는(Self) 카드는 빈 목록.
+    /// 실패하면(에너지 부족, 잘못된 번호, 대상 없음, 효과가 지정되지 않은 Buff 카드 등) 에너지도 카드도 그대로다.
     /// </summary>
     public bool TryPlayCardOnTargets(int handIndex, List<Combatant> targets)
     {
@@ -146,11 +155,18 @@ public class PlayerController : MonoBehaviour
         }
         CardInstance card = cardManager.hand[handIndex];   // 손패의 카드 한 장 (강화 상태 포함)
 
-        // 2) 효과가 아직 구현되지 않은 카드(Buff, Special)는 사용할 수 없다.
+        // 2) Buff 카드인데 걸어 줄 효과가 지정되지 않았으면(데이터 실수) 사용할 수 없다.
         //    에너지를 쓰기 전에 막으므로 에너지도 그대로, 카드도 손패에 그대로 남는다.
-        if (card.Type == CardType.Buff || card.Type == CardType.Special)
+        if (card.Type == CardType.Buff && card.StatusEffect == StatusEffectType.None)
         {
-            Debug.Log("[Player] '" + card.Name + "': 아직 구현되지 않은 카드 효과입니다.");
+            Debug.LogWarning("[Player] '" + card.Name + "': Buff 카드에 Status Effect가 지정되지 않았다. (카드 데이터 확인)");
+            return false;
+        }
+
+        // 2-1) 적에게 거는 Buff 카드(약화 등)인데 대상이 없으면 사용할 수 없다. (공격 카드와 같은 규칙)
+        if (card.Type == CardType.Buff && card.TargetType != TargetType.Self && CountTargets(targets) == 0)
+        {
+            Debug.LogWarning("[Player] '" + card.Name + "': 적에게 거는 카드는 대상이 필요하다.");
             return false;
         }
 
@@ -199,8 +215,11 @@ public class PlayerController : MonoBehaviour
                     {
                         continue;
                     }
-                    int hpLost = target.TakeDamage(card.Value);   // 강화된 카드면 강화 수치가 적용된다
-                    Debug.Log("[Player] 공격 " + card.Value + " → 적 체력 -" + hpLost + " (남은 체력 " + target.currentHp + ", 남은 방어도 " + target.block + ")");
+                    // 최종 피해 = Max(0, 카드 피해 + 플레이어의 공격력 보정). 대상마다 따로 계산한다.
+                    int damage = combatant.GetFinalAttack(card.Value);   // 강화된 카드면 강화 수치가 기본값
+                    int hpLost = target.TakeDamage(damage);
+                    Debug.Log("[Player] 공격 " + damage + BonusText(card.Value, damage) + " → " + TargetName(target)
+                              + " 체력 -" + hpLost + " (남은 체력 " + target.currentHp + ", 남은 방어도 " + target.block + ")");
                 }
                 break;
 
@@ -211,16 +230,60 @@ public class PlayerController : MonoBehaviour
                     // 데이터 실수 알림 (확정: 경고만 남기고 자신에게 적용)
                     Debug.LogWarning("[Player] '" + card.Name + "': 방어 카드의 Target Type이 Self가 아니다. 자신에게 적용한다. (카드 데이터 확인)");
                 }
-                combatant.GainBlock(card.Value);   // 강화된 카드면 강화 수치가 적용된다
-                Debug.Log("[Player] 방어도 +" + card.Value + " → 현재 방어도 " + combatant.block);
+                // 최종 방어도 = Max(0, 카드 방어도 + 플레이어의 방어도 보정)
+                int blockGain = combatant.GetFinalBlock(card.Value);   // 강화된 카드면 강화 수치가 기본값
+                combatant.GainBlock(blockGain);
+                Debug.Log("[Player] 방어도 +" + blockGain + BonusText(card.Value, blockGain) + " → 현재 방어도 " + combatant.block);
                 break;
 
             case CardType.Buff:
+                // 상태 효과를 건다. 수치 = 카드 수치(강화 시 강화 수치), 지속시간 = 카드의 지속시간(강화해도 그대로)
+                if (card.TargetType == TargetType.Self)
+                {
+                    combatant.ApplyStatus(card.StatusEffect, card.Value, card.Duration);   // 자신에게 (집중, 견고)
+                }
+                else
+                {
+                    // 적에게 (약화, 균열). 대상 목록은 CombatManager가 카드의 Target Type을 보고 정해 준다.
+                    foreach (Combatant target in targets)
+                    {
+                        if (target != null)
+                        {
+                            target.ApplyStatus(card.StatusEffect, card.Value, card.Duration);
+                        }
+                    }
+                }
+                break;
+
             case CardType.Special:
-                // 이곳에는 도달하지 않는다. 미구현 카드는 TryPlayCard에서 미리 막는다.
-                // 효과를 구현할 때 여기에 코드를 추가하고, TryPlayCard의 제한 조건도 함께 풀어준다.
+                // 지금 있는 특수 카드는 재정렬뿐이다: 카드 수치만큼 드로우 (기본 2장, 강화 3장)
+                // 손패 10장 제한과 뽑기 더미 재셔플은 CardManager.DrawCards가 기존 규칙대로 처리한다.
+                // 확정 순서(효과 → 버림)대로, 재정렬 카드가 아직 손패에 있는 상태에서 드로우한다.
+                if (card.TargetType != TargetType.Self)
+                {
+                    Debug.LogWarning("[Player] '" + card.Name + "': 특수 카드의 Target Type이 Self가 아니다. 그대로 적용한다. (카드 데이터 확인)");
+                }
+                int drawn = cardManager.DrawCards(card.Value);   // 반환값 = 뽑기 더미에서 실제로 꺼낸 장수
+                Debug.Log("[Player] '" + card.Name + "': 카드 " + card.Value + "장 드로우 (뽑기 더미에서 꺼낸 카드 " + drawn + "장)");
                 break;
         }
+    }
+
+    /// <summary>보정이 있으면 "(기본 6, 보정 +2)" 같은 글을, 없으면 빈 문자열을 돌려준다. (로그용)</summary>
+    private string BonusText(int baseValue, int finalValue)
+    {
+        if (baseValue == finalValue)
+        {
+            return "";
+        }
+        int diff = finalValue - baseValue;
+        return " (기본 " + baseValue + ", 보정 " + (diff >= 0 ? "+" : "") + diff + ")";
+    }
+
+    /// <summary>로그에 쓸 대상 이름</summary>
+    private string TargetName(Combatant target)
+    {
+        return string.IsNullOrEmpty(target.displayName) ? "적" : target.displayName;
     }
 
     /// <summary>대상 목록에서 비어 있지 않은(null이 아닌) 대상의 수</summary>

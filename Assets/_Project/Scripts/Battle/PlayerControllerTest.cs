@@ -16,7 +16,7 @@ public class PlayerControllerTest : MonoBehaviour
     public CardData guard;         // 수비: 비용 1, Defend 5
     public CardData heavyStrike;   // 강타: 비용 2, Attack 10
     public CardData quickJab;      // 속공: 비용 0, Attack 2
-    public CardData special;       // 특수(임시): 비용 1, Special
+    public CardData special;       // 재정렬(특수): 비용 1, Special, 드로우 2
 
     [Header("가짜 적 (공격 대상, 인스펙터에서 체력 변화 확인용)")]
     public Combatant dummyEnemy = new Combatant();
@@ -100,21 +100,23 @@ public class PlayerControllerTest : MonoBehaviour
         Check("C4. 속공 - 손패", cm.hand.Count, 2);
         // 이제 손패: [강타, 특수]
 
-        // C5) 특수(임시, 비용 1): 효과가 미구현이라 사용이 거부되어야 한다.
-        //     에너지는 그대로, 카드는 손패에 남고, 버림 더미로 가지 않는다.
+        // C5) 재정렬(특수, 비용 1, 드로우 2) - Phase 4에서 효과 구현됨
+        //     뽑기 더미가 비어 있으므로 버림 더미(타격, 수비, 속공 3장)를 섞어 2장을 뽑는다.
+        //     손패: [강타, 재정렬] → 재정렬 사용 → 2장 드로우 → 재정렬은 버림 더미로 → [강타, ?, ?]
+        //     버림 더미: 3장 → 재셔플로 0장 → 재정렬 1장
         ok = p.TryPlayCard(1, null);
-        CheckBool("C5. 특수 카드(미구현) 사용 실패", ok, false);
-        Check("C5. 특수 - 에너지 그대로", p.energy, 1);
-        Check("C5. 특수 - 손패 그대로", cm.hand.Count, 2);
-        Check("C5. 특수 - 버림 더미 그대로", cm.discardPile.Count, 3);
-        // 손패는 그대로: [강타, 특수]
+        CheckBool("C5. 재정렬 사용 성공", ok, true);
+        Check("C5. 재정렬 - 에너지 1→0", p.energy, 0);
+        Check("C5. 재정렬 - 손패 (강타 + 2장 드로우)", cm.hand.Count, 3);
+        Check("C5. 재정렬 - 버림 더미 (재셔플 후 재정렬 1장)", cm.discardPile.Count, 1);
+        // 이제 손패: [강타, 드로우한 카드 2장]
 
         // C6) 공격 카드에 대상이 없으면 실패하고 에너지를 쓰지 않아야 함
         p.StartTurn();   // 에너지 3으로 회복
-        ok = p.TryPlayCard(0, null);
+        ok = p.TryPlayCard(0, null);   // 0번 = 강타
         CheckBool("C6. 대상 없는 공격 - 사용 실패", ok, false);
         Check("C6. 대상 없는 공격 - 에너지 그대로", p.energy, 3);
-        Check("C6. 대상 없는 공격 - 손패 그대로", cm.hand.Count, 2);
+        Check("C6. 대상 없는 공격 - 손패 그대로", cm.hand.Count, 3);
 
         // E) 존재하지 않는 손패 번호
         ok = p.TryPlayCard(99, dummyEnemy);

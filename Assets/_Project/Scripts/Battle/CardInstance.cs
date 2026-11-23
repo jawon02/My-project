@@ -60,6 +60,18 @@ public class CardInstance
         get { return isUpgraded ? data.upgradedValue : data.value; }
     }
 
+    /// <summary>Buff 카드가 거는 상태 효과 종류 (Buff 카드가 아니면 None)</summary>
+    public StatusEffectType StatusEffect
+    {
+        get { return data.statusEffect; }
+    }
+
+    /// <summary>Buff 카드 효과의 지속시간. 강화해도 바뀌지 않는다. (확정 규칙)</summary>
+    public int Duration
+    {
+        get { return data.duration; }
+    }
+
     // ---------------------------------------------------------------
     // 강화
     // ---------------------------------------------------------------
