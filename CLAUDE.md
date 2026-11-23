@@ -6,7 +6,8 @@
 - 수학 공식과 기호가 공격 수단이 되는 턴제 로그라이크 (Slay the Spire식 카드 전투 + Into the Breach식 적 행동 예고)
 - 1인 초보 개발자와 함께 개발한다. Claude = C# 구현, ChatGPT = 기획, Gemini = QA
 - 확정된 규칙의 기준: `Docs/01_결정로그.md`. 코드와 충돌하면 임의로 판단하지 말고 알린다.
-- 구조 요약과 회귀 테스트 기준값: `Docs/02_코드현황.md`
+- 구조 요약과 회귀 테스트 기준값: `Docs/02_코드현황.md` / 로드맵·미결사항: `Docs/05_로드맵과_미결사항.md`
+- 각 단계가 끝나고 내가 테스트 통과를 알려 주면 Docs의 01, 02, 05 문서를 갱신한다. 01_결정로그에는 내가 준 ChatGPT 확정안과 내가 승인한 내용만 적는다. 03, 04는 수정하지 않는다.
 
 ## 폴더
 - 스크립트: `Assets/_Project/Scripts/Battle/`
@@ -40,4 +41,4 @@
 - Claude는 Unity를 직접 실행할 수 없다. 테스트는 사용자가 Unity에서 컴포넌트 우클릭 → `Run Auto Test` 로 실행한다.
 - 결과·에러는 Unity 콘솔 로그로 확인한다. Windows의 에디터 로그 파일: `%LOCALAPPDATA%\Unity\Editor\Editor.log`
   (사용자가 "로그 확인해"라고 하면 이 파일의 끝부분을 읽어서 PASS/FAIL 수와 에러를 정리한다)
-- 현재 회귀 기준값 (FAIL 0 기준): CombatantTest 15 / DataTest 12 / CardManagerTest 40 / PlayerControllerTest 37 / EnemyControllerTest 23 / CombatManagerTest 39 / CardUpgradeTest 40
+- 현재 회귀 기준값 (FAIL 0 기준): CombatantTest 15 / DataTest 12 / CardManagerTest 40 / PlayerControllerTest 37 / EnemyControllerTest 23 / CombatManagerTest 39 / CardUpgradeTest 40 / TargetSelectionTest 56
