@@ -15,6 +15,7 @@ MonoBehaviour:
   cardName: "\uC7AC\uC815\uB82C"
   cost: 1
   type: 3
+  targetType: 3
   value: 2
   upgradedValue: 3
   description: "Cost 1, Type Special, \uC124\uBA85 \"\uCE74\uB4DC 2\uC7A5 \uB4DC\uB85C\uC6B0\""

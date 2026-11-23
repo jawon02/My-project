@@ -24,6 +24,10 @@ public enum BattleState
 /// 턴 진행 순서 (확정):
 ///  플레이어 턴 시작 → 방어도 초기화 → 에너지 회복 → 5장 드로우 → 카드 사용 → 플레이어 턴 종료(수동)
 ///  → 남은 손패 버리기 → 적 턴 시작 → 적이 리스트 순서대로 행동 → 다음 플레이어 턴 시작
+///
+/// 공격 대상 (Phase 3):
+///  카드의 Target Type을 보고 대상을 정한다. 단일 = 선택된 적 / 전체 = 살아 있는 모든 적 / 무작위 = 살아 있는 적 중 1명.
+///  적 번호는 Enemies 리스트의 칸 번호로 고정이다. (0번 칸 = 1번 적, 적이 죽어도 번호가 바뀌지 않는다)
 /// </summary>
 public class CombatManager : MonoBehaviour
 {
@@ -40,6 +44,7 @@ public class CombatManager : MonoBehaviour
     public BattleState state = BattleState.NotStarted;
     public int turnCount = 0;                                          // 플레이어 턴 횟수
     public List<EnemyController> livingEnemies = new List<EnemyController>(); // 살아 있는 적 (순서 유지)
+    public int selectedEnemyIndex = -1;   // 단일 공격 대상: Enemies 리스트의 칸 번호 (0부터). -1 = 선택 없음
 
     /// <summary>전투가 끝났는지 (승리 또는 패배)</summary>
     public bool IsBattleOver
@@ -71,6 +76,7 @@ public class CombatManager : MonoBehaviour
 
 #if ENABLE_INPUT_SYSTEM
         // 새 Input System: 숫자키 1~9 = 손패 1~9번째 카드, 0 = 10번째 카드, 스페이스 = 턴 종료
+        //                  ← / → = 대상 변경, Tab = 다음 살아 있는 적
         Keyboard kb = Keyboard.current;
         if (kb == null)
         {
@@ -84,6 +90,18 @@ public class CombatManager : MonoBehaviour
                 PlayCard(i);
                 return;   // 한 프레임에 한 번만 처리
             }
+        }
+        if (kb.leftArrowKey.wasPressedThisFrame)
+        {
+            SelectPreviousEnemy();   // ← : 왼쪽 적으로 대상 변경
+        }
+        if (kb.rightArrowKey.wasPressedThisFrame)
+        {
+            SelectNextEnemy();       // → : 오른쪽 적으로 대상 변경
+        }
+        if (kb.tabKey.wasPressedThisFrame)
+        {
+            SelectNextEnemyLoop();   // Tab : 다음 살아 있는 적 (끝에서 처음으로 순환)
         }
         if (kb.spaceKey.wasPressedThisFrame)
         {
@@ -99,6 +117,18 @@ public class CombatManager : MonoBehaviour
                 PlayCard(i);
                 return;
             }
+        }
+        if (Input.GetKeyDown(KeyCode.LeftArrow))
+        {
+            SelectPreviousEnemy();
+        }
+        if (Input.GetKeyDown(KeyCode.RightArrow))
+        {
+            SelectNextEnemy();
+        }
+        if (Input.GetKeyDown(KeyCode.Tab))
+        {
+            SelectNextEnemyLoop();
         }
         if (Input.GetKeyDown(KeyCode.Space))
         {
@@ -166,6 +196,10 @@ public class CombatManager : MonoBehaviour
             return;
         }
 
+        // 대상 선택 초기화: 가장 왼쪽의 살아 있는 적을 기본 대상으로 한다.
+        selectedEnemyIndex = -1;
+        RefreshSelection();
+
         Debug.Log("===== 전투 시작 (적 " + livingEnemies.Count + "마리) =====");
         StartPlayerTurn();
     }
@@ -191,8 +225,11 @@ public class CombatManager : MonoBehaviour
 
     /// <summary>
     /// 손패의 handIndex번째 카드를 사용한다. (0부터 시작) 성공하면 true.
-    /// 공격 카드의 대상은 "살아 있는 적 중 리스트 맨 앞의 적"이다. (임시 규칙, 대상 선택 기획이 생기면 교체)
-    /// 카드 사용으로 마지막 적이 쓰러지면 플레이어 턴이 남아 있어도 즉시 승리한다.
+    /// 카드의 Target Type을 보고 대상을 정한 뒤 PlayerController에 넘긴다.
+    ///  - 단일(SingleEnemy): 지금 선택된 적 (selectedEnemyIndex)
+    ///  - 전체(AllEnemies): 살아 있는 모든 적 (왼쪽부터)
+    ///  - 무작위(RandomEnemy): 살아 있는 적 중 1명을 지금 이 순간 무작위로
+    /// 처리 순서: 효과 적용 → 쓰러진 적 제거 → 대상 자동 변경 → 승리 판정(한 번)
     /// </summary>
     public bool PlayCard(int handIndex)
     {
@@ -203,28 +240,104 @@ public class CombatManager : MonoBehaviour
             return false;
         }
 
-        EnemyController target = GetFirstLivingEnemy();
-        if (target == null)
+        RefreshSelection();   // 안전장치: 선택된 적이 이미 쓰러졌다면 먼저 다시 고른다
+
+        // 손패 번호가 잘못됐으면 card는 null이다. (실패 처리와 로그는 PlayerController가 한다)
+        CardInstance card = null;
+        if (handIndex >= 0 && handIndex < cardManager.hand.Count)
         {
-            return false;
+            card = cardManager.hand[handIndex];
+        }
+
+        // 카드의 대상 유형에 따라 때릴 적을 정한다.
+        List<EnemyController> targetEnemies = ResolveTargets(card);
+        List<Combatant> targets = new List<Combatant>();
+        foreach (EnemyController enemy in targetEnemies)
+        {
+            targets.Add(enemy.combatant);
         }
 
         // 에너지 확인 → 지불 → 효과 → 버림 더미 이동은 PlayerController가 처리
-        bool played = player.TryPlayCard(handIndex, target.combatant);
+        bool played = player.TryPlayCardOnTargets(handIndex, targets);
         if (!played)
         {
             return false;
         }
 
-        // 카드 효과로 쓰러진 적은 즉시 제거한다.
+        // 어떤 적이 맞았는지 로그로 남긴다. (무작위 공격의 실제 대상 확인용)
+        if (card != null && card.Type == CardType.Attack)
+        {
+            Debug.Log("[Combat] '" + card.Name + "' 대상(" + TargetTypeToText(card.TargetType) + "): " + EnemyListToText(targetEnemies));
+        }
+
+        // 카드 효과로 쓰러진 적은 제거한다. (전체 공격이어도 모든 적에게 피해를 준 다음 한 번에 처리)
         RemoveDeadEnemies();
 
-        // 모든 적이 쓰러졌다면 즉시 승리
+        // 선택된 적이 쓰러졌다면 가장 왼쪽의 살아 있는 적으로 자동 변경 (아무도 없으면 선택 해제)
+        RefreshSelection();
+
+        // 모든 적이 쓰러졌다면 즉시 승리 (카드 처리가 다 끝난 뒤 한 번만 판정)
         if (livingEnemies.Count == 0)
         {
             EndBattle(BattleState.Victory);
         }
         return true;
+    }
+
+    /// <summary>
+    /// 카드의 대상 유형에 따라 공격할 적 목록을 만든다. 공격 카드가 아니면 빈 목록.
+    /// 대상이 없으면(살아 있는 적이 없거나 선택된 적이 없으면) 빈 목록 → PlayerController가 사용 실패 처리한다.
+    /// </summary>
+    private List<EnemyController> ResolveTargets(CardInstance card)
+    {
+        List<EnemyController> result = new List<EnemyController>();
+        if (card == null || card.Type != CardType.Attack)
+        {
+            return result;   // 방어 카드 등은 적 대상이 필요 없다
+        }
+
+        switch (card.TargetType)
+        {
+            case TargetType.SingleEnemy:
+                EnemyController selected = SelectedEnemy;
+                if (selected != null)
+                {
+                    result.Add(selected);
+                }
+                break;
+
+            case TargetType.AllEnemies:
+                // livingEnemies는 Enemies 리스트 순서(= 왼쪽부터)를 유지하고 있다.
+                foreach (EnemyController enemy in livingEnemies)
+                {
+                    if (enemy != null && !enemy.IsDead)
+                    {
+                        result.Add(enemy);
+                    }
+                }
+                break;
+
+            case TargetType.RandomEnemy:
+                // 살아 있는 적 후보를 모은 뒤 그중 하나를 무작위로 고른다. (카드 사용 순간에 결정)
+                List<EnemyController> candidates = new List<EnemyController>();
+                foreach (EnemyController enemy in livingEnemies)
+                {
+                    if (enemy != null && !enemy.IsDead)
+                    {
+                        candidates.Add(enemy);
+                    }
+                }
+                if (candidates.Count > 0)
+                {
+                    result.Add(candidates[Random.Range(0, candidates.Count)]);   // 0 ~ (후보 수 - 1)
+                }
+                break;
+
+            case TargetType.Self:
+                // 공격 카드의 자기 대상은 허용하지 않는다. 빈 목록을 넘기면 PlayerController가 막는다.
+                break;
+        }
+        return result;
     }
 
     /// <summary>
@@ -328,20 +441,159 @@ public class CombatManager : MonoBehaviour
     }
 
     // ---------------------------------------------------------------
+    // 단일 공격 대상 선택 (키보드 입력과 나중의 UI 클릭이 모두 이 함수들을 호출한다)
+    // ---------------------------------------------------------------
+
+    /// <summary>지금 선택된 적. 선택이 없거나 선택된 적이 쓰러졌으면 null</summary>
+    public EnemyController SelectedEnemy
+    {
+        get { return IsSelectable(selectedEnemyIndex) ? enemies[selectedEnemyIndex] : null; }
+    }
+
+    /// <summary>
+    /// index번 칸(0부터)의 적을 대상으로 선택한다. 성공하면 true.
+    /// 쓰러진 적이나 없는 칸은 선택할 수 없다. (이때는 선택이 바뀌지 않는다)
+    /// </summary>
+    public bool SelectEnemy(int index)
+    {
+        if (!IsSelectable(index))
+        {
+            Debug.Log("[Combat] " + (index + 1) + "번 적은 선택할 수 없다. (없거나 쓰러짐)");
+            return false;
+        }
+        selectedEnemyIndex = index;
+        Debug.Log("[Combat] 대상 선택: " + EnemyLabel(enemies[index]));
+        return true;
+    }
+
+    /// <summary>→ : 오른쪽에 있는 살아 있는 적으로 대상 변경. 오른쪽 끝이면 그대로.</summary>
+    public bool SelectNextEnemy()
+    {
+        for (int i = selectedEnemyIndex + 1; i < enemies.Count; i++)
+        {
+            if (IsSelectable(i))
+            {
+                return SelectEnemy(i);
+            }
+        }
+        return false;
+    }
+
+    /// <summary>← : 왼쪽에 있는 살아 있는 적으로 대상 변경. 왼쪽 끝이면 그대로.</summary>
+    public bool SelectPreviousEnemy()
+    {
+        int start = (selectedEnemyIndex < 0) ? enemies.Count - 1 : selectedEnemyIndex - 1;
+        for (int i = start; i >= 0; i--)
+        {
+            if (IsSelectable(i))
+            {
+                return SelectEnemy(i);
+            }
+        }
+        return false;
+    }
+
+    /// <summary>Tab : 다음 살아 있는 적으로 대상 변경. 오른쪽 끝 다음은 다시 왼쪽 처음으로 돌아간다.</summary>
+    public bool SelectNextEnemyLoop()
+    {
+        for (int step = 1; step <= enemies.Count; step++)
+        {
+            int i = (selectedEnemyIndex + step) % enemies.Count;   // 끝을 넘어가면 0번 칸으로
+            if (i < 0)
+            {
+                i += enemies.Count;
+            }
+            if (IsSelectable(i))
+            {
+                return SelectEnemy(i);
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// 선택 상태를 정리한다. (전투 시작, 적 제거 후, 카드 사용 직전에 호출)
+    /// - 지금 선택된 적이 살아 있으면 그대로 둔다.
+    /// - 아니면 가장 왼쪽의 살아 있는 적을 고른다. (살아 있는 적이 1마리면 자연히 그 적이 선택된다)
+    /// - 살아 있는 적이 없으면 선택을 해제한다(-1).
+    /// </summary>
+    private void RefreshSelection()
+    {
+        if (IsSelectable(selectedEnemyIndex))
+        {
+            return;
+        }
+
+        int before = selectedEnemyIndex;
+        selectedEnemyIndex = -1;
+        for (int i = 0; i < enemies.Count; i++)
+        {
+            if (IsSelectable(i))
+            {
+                selectedEnemyIndex = i;
+                break;
+            }
+        }
+
+        if (selectedEnemyIndex != before)
+        {
+            if (selectedEnemyIndex >= 0)
+            {
+                Debug.Log("[Combat] 대상 자동 변경: " + EnemyLabel(enemies[selectedEnemyIndex]));
+            }
+            else
+            {
+                Debug.Log("[Combat] 살아 있는 적이 없어 대상 선택을 해제했다.");
+            }
+        }
+    }
+
+    /// <summary>index번 칸의 적을 선택할 수 있는지 (칸이 있고, 적이 살아 있고, 이번 전투에 참가 중)</summary>
+    private bool IsSelectable(int index)
+    {
+        if (index < 0 || index >= enemies.Count)
+        {
+            return false;
+        }
+        EnemyController enemy = enemies[index];
+        return enemy != null && !enemy.IsDead && livingEnemies.Contains(enemy);
+    }
+
+    // ---------------------------------------------------------------
     // 도우미 함수
     // ---------------------------------------------------------------
 
-    /// <summary>살아 있는 적 중 리스트 맨 앞의 적. 없으면 null</summary>
-    private EnemyController GetFirstLivingEnemy()
+    /// <summary>적 이름 앞에 고정 번호를 붙인다. 예: "2번 슬라임"</summary>
+    private string EnemyLabel(EnemyController enemy)
     {
-        foreach (EnemyController enemy in livingEnemies)
+        int number = enemies.IndexOf(enemy) + 1;   // 칸 번호(0부터) + 1 = 화면에 보여 줄 번호
+        string name = (enemy.data != null) ? enemy.data.enemyName : enemy.gameObject.name;
+        return number + "번 " + name;
+    }
+
+    private string EnemyListToText(List<EnemyController> list)
+    {
+        if (list.Count == 0)
         {
-            if (enemy != null && !enemy.IsDead)
-            {
-                return enemy;
-            }
+            return "(없음)";
         }
-        return null;
+        string text = "";
+        for (int i = 0; i < list.Count; i++)
+        {
+            text += (i > 0 ? ", " : "") + EnemyLabel(list[i]);
+        }
+        return text;
+    }
+
+    private string TargetTypeToText(TargetType type)
+    {
+        switch (type)
+        {
+            case TargetType.SingleEnemy: return "단일";
+            case TargetType.AllEnemies: return "전체";
+            case TargetType.RandomEnemy: return "무작위";
+            default: return "자신";
+        }
     }
 
     /// <summary>필요한 연결이 다 되어 있는지 확인한다.</summary>
@@ -381,5 +633,8 @@ public class CombatManager : MonoBehaviour
         {
             enemy.LogState();
         }
+
+        EnemyController selected = SelectedEnemy;
+        Debug.Log("[대상] " + (selected != null ? EnemyLabel(selected) : "(없음)") + "  (←/→/Tab으로 변경)");
     }
 }

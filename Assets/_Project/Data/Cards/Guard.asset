@@ -15,6 +15,7 @@ MonoBehaviour:
   cardName: "\uC218\uBE44"
   cost: 1
   type: 1
+  targetType: 3
   value: 5
   upgradedValue: 8
   description: "\uC784\uC2DC\uC218\uCE58"

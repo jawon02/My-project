@@ -48,6 +48,12 @@ public class CardInstance
         get { return data.type; }
     }
 
+    /// <summary>대상 유형 (단일/전체/무작위/자신). 강화해도 바뀌지 않는다.</summary>
+    public TargetType TargetType
+    {
+        get { return data.targetType; }
+    }
+
     /// <summary>현재 수치. 강화된 카드는 원본의 upgradedValue를 쓴다.</summary>
     public int Value
     {
