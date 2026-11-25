@@ -62,19 +62,29 @@ public class StatusEffectTest : MonoBehaviour
         unit.TickStatusEffects();   // 지속시간 2 → 1
         Check("A. 지속시간 1 감소 → 1", Turns(unit, StatusEffectType.AttackUp), 1);
         unit.ApplyStatus(StatusEffectType.AttackUp, 1, 2);   // 더 작은 수치로 다시 걸기
-        Check("A. 재적용(작은 수치) - 수치는 큰 쪽 2 유지", Amount(unit, StatusEffectType.AttackUp), 2);
+        Check("A. 재적용(작은 수치) - 기존 수치 2 유지", Amount(unit, StatusEffectType.AttackUp), 2);
         Check("A. 재적용 - 지속시간 2로 갱신", Turns(unit, StatusEffectType.AttackUp), 2);
         Check("A. 재적용 - 효과는 1개 (중첩 없음)", unit.statusEffects.Count, 1);
+        // 지시서 예시: 기존 공격력 +2 (1턴) 위에 공격력 +3 (2턴) → 결과 공격력 +2 (2턴)
+        unit.TickStatusEffects();   // 지속시간 2 → 1
         unit.ApplyStatus(StatusEffectType.AttackUp, 3, 2);   // 더 큰 수치로 다시 걸기
-        Check("A. 재적용(큰 수치) - 수치 3으로", Amount(unit, StatusEffectType.AttackUp), 3);
+        Check("A. 재적용(큰 수치) - 기존 수치 2 유지", Amount(unit, StatusEffectType.AttackUp), 2);
+        Check("A. 재적용(큰 수치) - 지속시간 1→2로 갱신", Turns(unit, StatusEffectType.AttackUp), 2);
+        Check("A. 재적용(큰 수치) - 효과는 1개 (중첩 없음)", unit.statusEffects.Count, 1);
         unit.ApplyStatus(StatusEffectType.AttackDown, 2, 2);   // 반대 효과
         Check("A. 반대 효과는 따로 유지 - 효과 2개", unit.statusEffects.Count, 2);
-        Check("A. 반대 효과 합산 - 보정 3-2=+1", unit.GetAttackModifier(), 1);
-        unit.ApplyStatus(StatusEffectType.AttackDown, 10, 2);
-        Check("A. 최종 피해는 최소 0 (6+3-10)", unit.GetFinalAttack(6), 0);
+        Check("A. 반대 효과 합산 - 보정 2-2=0", unit.GetAttackModifier(), 0);
+        unit.ApplyStatus(StatusEffectType.AttackDown, 10, 2);   // 기존 공격력 감소 2가 유지된다 (10으로 바뀌지 않음)
+        Check("A. 재적용 - 공격력 감소도 기존 수치 2 유지", Amount(unit, StatusEffectType.AttackDown), 2);
         unit.ApplyStatus(StatusEffectType.DefenseUp, 2, 2);
         Check("A. 최종 방어도 5+2=7", unit.GetFinalBlock(5), 7);
-        Check("A. 방어도 효과는 공격력에 영향 없음 (보정 그대로 -7)", unit.GetAttackModifier(), -7);
+        Check("A. 방어도 효과는 공격력에 영향 없음 (보정 그대로 0)", unit.GetAttackModifier(), 0);
+        // 최종 피해 최소 0 확인은 효과가 없는 새 대상으로 따로 한다. (재적용으로는 감소 10을 걸 수 없으므로)
+        Combatant weakUnit = new Combatant();
+        weakUnit.Init(50);
+        weakUnit.displayName = "테스트 대상2";
+        weakUnit.ApplyStatus(StatusEffectType.AttackDown, 10, 2);
+        Check("A. 최종 피해는 최소 0 (6-10)", weakUnit.GetFinalAttack(6), 0);
         CheckBool("A. 수치 0인 효과는 무시", unit.ApplyStatus(StatusEffectType.DefenseDown, 0, 2), false);
         CheckBool("A. 지속시간 0인 효과는 무시", unit.ApplyStatus(StatusEffectType.DefenseDown, 2, 0), false);
         CheckBool("A. 무시된 효과는 목록에 없음", unit.FindStatus(StatusEffectType.DefenseDown) == null, true);
@@ -148,14 +158,14 @@ public class StatusEffectTest : MonoBehaviour
         CheckBool("D. 1번 적 행동 2번 뒤 만료", enemyA.combatant.FindStatus(StatusEffectType.AttackDown) == null, true);
         CheckText("D. 만료 후 예고 재계산", enemyA.nextActionPreview, "공격 10");
 
-        // 강화된 약화(3) 다음에 일반 약화(2)를 다시 걸면 큰 수치 3 유지
+        // 강화된 약화(3) 다음에 일반 약화(2)를 다시 걸면 기존 수치 3 유지 (지속시간만 갱신)
         Prepare();
         AddUpgraded(weaken);
         c.cardManager.hand.Add(new CardInstance(weaken));
         c.SelectEnemy(1);   // 이번에는 2번 적에게
         c.PlayCard(0);
         c.PlayCard(0);
-        Check("D. 약화+ 후 약화 - 2번 적 수치는 큰 쪽 3 유지", Amount(enemyB.combatant, StatusEffectType.AttackDown), 3);
+        Check("D. 약화+ 후 약화 - 2번 적 수치는 기존 3 유지", Amount(enemyB.combatant, StatusEffectType.AttackDown), 3);
         Check("D. 약화+ 후 약화 - 지속시간 2로 갱신", Turns(enemyB.combatant, StatusEffectType.AttackDown), 2);
         CheckText("D. 약화+ - 2번 적 예고", enemyB.nextActionPreview, "공격 4 (기본 7, 공격력 감소 -3)");
         Check("D. 약화+ - 1번 적에게는 효과 없음", enemyA.combatant.statusEffects.Count, 0);

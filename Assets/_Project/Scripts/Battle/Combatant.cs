@@ -103,7 +103,8 @@ public class Combatant
     /// <summary>
     /// 상태 효과를 건다.
     /// - 수치나 지속시간이 0 이하이면 무시한다.
-    /// - 같은 종류의 효과가 이미 있으면: 수치는 더 큰 쪽을 유지하고, 지속시간은 새 값으로 갱신한다. (중첩하지 않음)
+    /// - 같은 종류의 효과가 이미 있으면: 기존 수치를 그대로 유지하고, 지속시간만 새 값으로 갱신한다. (중첩하지 않음, Phase 4-B 확정)
+    ///   예) 공격력 +2 (1턴) 위에 공격력 +3 (2턴)을 걸면 → 공격력 +2 (2턴)
     /// - 반대 효과(증가/감소)는 다른 종류이므로 따로따로 유지된다.
     /// 효과를 걸었으면(새로 걸거나 갱신) true.
     /// </summary>
@@ -127,10 +128,9 @@ public class Combatant
         }
         else
         {
-            // 같은 효과를 다시 건 경우 → 수치는 큰 쪽 유지, 지속시간은 새로 갱신
-            existing.amount = Mathf.Max(existing.amount, amount);
+            // 같은 효과를 다시 건 경우 → 수치는 기존 값 그대로, 지속시간만 새로 갱신
             existing.turnsLeft = duration;
-            Debug.Log("[효과] " + ownerName + ": " + existing.ToShortText() + " 갱신 (" + duration + "턴)");
+            Debug.Log("[효과] " + ownerName + ": " + existing.ToShortText() + " 갱신 (기존 수치 유지, " + duration + "턴)");
         }
         return true;
     }
