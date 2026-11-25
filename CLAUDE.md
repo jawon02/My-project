@@ -35,6 +35,7 @@
 - `.meta` 파일을 직접 만들거나 지우거나 수정하지 않는다. (새 스크립트의 .meta는 Unity가 만든다)
 - `.unity`, `.asset`, `.prefab` 파일을 직접 편집하지 않는다. 인스펙터 설정이 필요하면 사용자에게 방법을 안내한다.
 - `Library/`, `Temp/`, `ProjectSettings/`, `Packages/` 는 건드리지 않는다.
+- `.idea/` 폴더와 `.vscode/` 폴더는 건드리지 않는다.
 - 사용자 요청 없이 git commit / push 하지 않는다.
 
 ## 테스트
