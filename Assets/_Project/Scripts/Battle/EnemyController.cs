@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -17,6 +18,18 @@ public class EnemyController : MonoBehaviour
     public Combatant combatant = new Combatant();   // 체력, 방어도
     public int turnIndex = 0;                       // 지금까지 실행한 행동 횟수 (다음 행동 번호)
     public string nextActionPreview = "";           // 인스펙터에서 보는 행동 예고 문구
+
+    /// <summary>
+    /// 같은 전투에 참가 중인 적 목록 (자기 자신 포함, 왼쪽부터). AllyBuff·AllyHeal 대상을 고를 때 쓴다.
+    /// CombatManager가 전투 시작 시 "살아 있는 적 리스트"를 그대로 넣어 준다.
+    /// 같은 리스트를 함께 쓰므로 적이 쓰러져 리스트에서 빠지면 여기에도 바로 반영된다.
+    /// 비어 있으면(null) 아군이 없는 것으로 본다. 씬 파일에는 저장하지 않는다(NonSerialized).
+    /// </summary>
+    [System.NonSerialized]
+    public List<EnemyController> allies = null;
+
+    /// <summary>아군 행동의 대상이 없을 때 예고 문구</summary>
+    public const string NoTargetPreview = "행동 없음(대상 없음)";
 
     /// <summary>적이 죽었는지 (체력 0 이하)</summary>
     public bool IsDead
@@ -71,7 +84,10 @@ public class EnemyController : MonoBehaviour
     /// <summary>
     /// 이 적의 행동을 실행하고, 실행한 행동을 돌려준다.
     /// 순서(확정): ① 이 적의 방어도 초기화 → ② 예고했던 행동 실행(상태 효과 보정 반영)
-    ///           → ③ 이 적의 상태 효과 지속시간 1 감소 → ④ 다음 행동으로 넘어감.
+    ///           → ③ 이 적의 상태 효과 지속시간 1 감소 (단, 이번 행동에 자신에게 건 효과는 제외)
+    ///           → ④ 다음 행동으로 넘어감.
+    /// 아군 행동(AllyBuff·AllyHeal)은 실행하는 순간에 대상을 다시 고른다. 대상이 없으면 그 행동만 생략하고
+    /// ①③④는 평소대로 진행한다. (행동 패턴이 멈추지 않도록)
     /// 따라서 방어 행동으로 얻은 방어도는 다음 플레이어 턴 동안 유지되고,
     /// 이 적의 다음 행동 직전에 사라진다.
     /// playerTarget: 공격 행동이 때릴 대상 (플레이어의 Combatant)
@@ -99,6 +115,8 @@ public class EnemyController : MonoBehaviour
         // ② 예고했던 행동을 그대로 실행한다.
         //    실행 수치는 예고와 같은 함수(GetFinalValue)로 계산하므로 예고와 실제 결과가 항상 같다.
         int finalValue = GetFinalValue(action);
+        string previewText = GetPreviewText(action);   // 로그용 (효과를 걸기 전의 예고 문구)
+        StatusEffectType skipTick = StatusEffectType.None;   // ③에서 이번에는 줄이지 않을 효과 (SelfBuff용)
         switch (action.type)
         {
             case EnemyActionType.Attack:
@@ -119,10 +137,54 @@ public class EnemyController : MonoBehaviour
                 combatant.GainBlock(finalValue);
                 Debug.Log("[Enemy] " + GetName() + " " + GetPreviewText(action) + " → 현재 방어도 " + combatant.block);
                 break;
+
+            case EnemyActionType.SelfBuff:
+                Debug.Log("[Enemy] " + GetName() + " " + previewText);
+                // 새로 걸었거나 지속시간을 갱신했으면, 이 효과는 이번 행동이 끝날 때 줄이지 않는다.
+                if (combatant.ApplyStatus(action.statusEffect, action.value, action.duration))
+                {
+                    skipTick = action.statusEffect;
+                }
+                break;
+
+            case EnemyActionType.AllyBuff:
+                {
+                    EnemyController buffTarget = FindAllyBuffTarget();   // 실행 순간에 다시 고른다
+                    if (buffTarget == null)
+                    {
+                        Debug.Log("[Enemy] " + GetName() + " 아군 강화 → " + NoTargetPreview + " - 행동 생략");
+                    }
+                    else
+                    {
+                        Debug.Log("[Enemy] " + GetName() + " " + previewText);
+                        // 대상의 지속시간은 대상 자신의 행동이 끝날 때 줄어든다. (기존 규칙 그대로)
+                        buffTarget.combatant.ApplyStatus(action.statusEffect, action.value, action.duration);
+                    }
+                }
+                break;
+
+            case EnemyActionType.AllyHeal:
+                {
+                    EnemyController healTarget = FindAllyHealTarget();   // 실행 순간에 다시 고른다
+                    if (healTarget == null)
+                    {
+                        Debug.Log("[Enemy] " + GetName() + " 아군 회복 → " + NoTargetPreview + " - 행동 생략");
+                    }
+                    else
+                    {
+                        int hpBefore = healTarget.combatant.currentHp;
+                        healTarget.combatant.Heal(action.value);   // 최대 체력을 넘지 않는다
+                        Debug.Log("[Enemy] " + GetName() + " " + previewText
+                                  + " → 실제 회복 " + (healTarget.combatant.currentHp - hpBefore)
+                                  + " (체력 " + healTarget.combatant.currentHp + "/" + healTarget.combatant.maxHp + ")");
+                    }
+                }
+                break;
         }
 
         // ③ 이 적에게 걸린 상태 효과의 지속시간을 1 줄인다. (0이 되면 만료)
-        combatant.TickStatusEffects();
+        //    이번 행동에 자기 자신에게 건 효과(skipTick)만 이번에는 줄이지 않는다.
+        combatant.TickStatusEffects(skipTick);
 
         // ④ 다음 행동으로 넘어가고, 행동 예고를 갱신한다. (만료된 효과도 여기서 예고에 반영된다)
         turnIndex++;
@@ -168,12 +230,88 @@ public class EnemyController : MonoBehaviour
     }
 
     /// <summary>
+    /// AllyBuff 대상: 자기 자신을 제외한 살아 있는 아군 중 가장 왼쪽. 없으면 null.
+    /// 예고와 실제 실행이 모두 이 함수를 쓴다.
+    /// </summary>
+    public EnemyController FindAllyBuffTarget()
+    {
+        if (allies == null)
+        {
+            return null;
+        }
+        foreach (EnemyController ally in allies)   // 리스트 순서 = 왼쪽부터
+        {
+            if (ally == null || ally == this || ally.IsDead)
+            {
+                continue;
+            }
+            return ally;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// AllyHeal 대상: 자기 자신을 제외한 살아 있는 아군 중 체력이 줄어든(최대 체력 미만) 가장 왼쪽. 없으면 null.
+    /// 체력이 가득 찬 아군은 고르지 않는다. 예고와 실제 실행이 모두 이 함수를 쓴다.
+    /// </summary>
+    public EnemyController FindAllyHealTarget()
+    {
+        if (allies == null)
+        {
+            return null;
+        }
+        foreach (EnemyController ally in allies)
+        {
+            if (ally == null || ally == this || ally.IsDead)
+            {
+                continue;
+            }
+            if (ally.combatant.currentHp < ally.combatant.maxHp)
+            {
+                return ally;
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
     /// 보정을 반영한 예고 문구.
     /// 보정이 없으면 "공격 7" (기존과 같음)
     /// 보정이 있으면 "공격 5 (기본 7, 공격력 감소 -2)"
+    /// 강화·회복 행동 (Phase 4-B):
+    ///   "자기 강화: 공격력 +2 (2턴)" / "아군 강화: 2번 슬라임 공격력 +2 (2턴)" / "아군 회복: 2번 슬라임 +6"
+    ///   아군 대상이 없으면 "행동 없음(대상 없음)"
     /// </summary>
     private string GetPreviewText(EnemyActionData action)
     {
+        switch (action.type)
+        {
+            case EnemyActionType.SelfBuff:
+                return "자기 강화: " + StatusEffect.GetStatText(action.statusEffect, action.value)
+                       + " (" + action.duration + "턴)";
+
+            case EnemyActionType.AllyBuff:
+                {
+                    EnemyController target = FindAllyBuffTarget();
+                    if (target == null)
+                    {
+                        return NoTargetPreview;
+                    }
+                    return "아군 강화: " + target.GetLabel() + " "
+                           + StatusEffect.GetStatText(action.statusEffect, action.value) + " (" + action.duration + "턴)";
+                }
+
+            case EnemyActionType.AllyHeal:
+                {
+                    EnemyController target = FindAllyHealTarget();
+                    if (target == null)
+                    {
+                        return NoTargetPreview;
+                    }
+                    return "아군 회복: " + target.GetLabel() + " +" + action.value;
+                }
+        }
+
         bool isAttack = action.type == EnemyActionType.Attack;
         string modifierText = "";
         if (action.type == EnemyActionType.Attack || action.type == EnemyActionType.Defend)
@@ -188,6 +326,16 @@ public class EnemyController : MonoBehaviour
 
         string label = isAttack ? "공격" : "방어";
         return label + " " + GetFinalValue(action) + " (기본 " + action.value + ", " + modifierText + ")";
+    }
+
+    /// <summary>예고에 쓰는 번호 붙은 이름. 예: "2번 슬라임" (CombatManager가 붙여 준 이름이 없으면 적 이름)</summary>
+    public string GetLabel()
+    {
+        if (!string.IsNullOrEmpty(combatant.displayName))
+        {
+            return combatant.displayName;
+        }
+        return GetName();
     }
 
     private string GetName()

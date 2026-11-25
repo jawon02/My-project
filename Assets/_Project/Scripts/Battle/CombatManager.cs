@@ -188,8 +188,12 @@ public class CombatManager : MonoBehaviour
             enemy.gameObject.SetActive(true);
             enemy.InitBattle();                                  // 체력·방어도·상태 효과 초기화
             enemy.combatant.displayName = EnemyLabel(enemy);     // 로그용 이름 (예: "1번 슬라임")
+            enemy.allies = livingEnemies;   // 아군 행동(AllyBuff·AllyHeal)의 대상 후보 = 살아 있는 적 리스트 (같은 리스트를 공유)
             livingEnemies.Add(enemy);   // 리스트 순서 그대로 (= 왼쪽부터)
         }
+
+        // 모든 적의 이름과 아군 목록이 준비된 뒤에 예고를 다시 계산한다. (아군 강화 예고에 "2번 슬라임" 같은 이름이 필요)
+        RefreshAllPreviews();
 
         if (livingEnemies.Count == 0)
         {
@@ -276,6 +280,9 @@ public class CombatManager : MonoBehaviour
 
         // 카드 효과로 쓰러진 적은 제거한다. (전체 공격이어도 모든 적에게 피해를 준 다음 한 번에 처리)
         RemoveDeadEnemies();
+
+        // 적이 쓰러졌거나 체력이 바뀌었으면 아군 강화·회복 대상이 바뀔 수 있으므로 예고를 한 번 더 계산한다.
+        RefreshAllPreviews();
 
         // 선택된 적이 쓰러졌다면 가장 왼쪽의 살아 있는 적으로 자동 변경 (아무도 없으면 선택 해제)
         RefreshSelection();
@@ -392,6 +399,10 @@ public class CombatManager : MonoBehaviour
             }
 
             enemy.ExecuteAction(player.combatant);
+
+            // 적 하나가 행동할 때마다 살아 있는 모든 적의 예고를 다시 계산한다.
+            // (예: 아군 강화를 받은 적의 공격 예고, 회복으로 체력이 가득 찬 아군의 회복 예고)
+            RefreshAllPreviews();
 
             // 플레이어 체력이 0 이하가 되면 즉시 패배
             if (player.IsDead)

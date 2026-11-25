@@ -63,6 +63,28 @@ public class StatusEffect
         }
     }
 
+    /// <summary>
+    /// 적 강화 행동 예고용: "공격력 +2", "방어도 -2"처럼 능력치 이름과 부호 붙은 수치. (Phase 4-B)
+    /// </summary>
+    public static string GetStatText(StatusEffectType type, int amount)
+    {
+        string stat;
+        switch (type)
+        {
+            case StatusEffectType.AttackUp:
+            case StatusEffectType.AttackDown:
+                stat = "공격력";
+                break;
+            case StatusEffectType.DefenseUp:
+            case StatusEffectType.DefenseDown:
+                stat = "방어도";
+                break;
+            default:
+                return "효과 없음";
+        }
+        return stat + " " + (IsDecrease(type) ? "-" : "+") + amount;
+    }
+
     /// <summary>"공격력 감소 -2"처럼 이름과 부호 붙은 수치를 함께 돌려준다.</summary>
     public string ToShortText()
     {

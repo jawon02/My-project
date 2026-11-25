@@ -3,17 +3,20 @@ using UnityEngine;
 
 /// <summary>
 /// 적이 할 수 있는 행동 종류.
-/// 지금은 공격/방어 두 가지만 있다. (자기 강화, 아군 회복 등은 4단계 이후 추가)
+/// 주의: 새 종류는 반드시 맨 뒤에 추가한다. (에셋에는 순서 번호로 저장되므로 중간에 넣으면 기존 적 데이터가 바뀐다)
 /// </summary>
 public enum EnemyActionType
 {
-    Attack,   // 플레이어에게 피해
-    Defend    // 자신의 방어도 획득
+    Attack,     // 플레이어에게 피해
+    Defend,     // 자신의 방어도 획득
+    SelfBuff,   // 자기 자신에게 상태 효과 (Phase 4-B)
+    AllyBuff,   // 자신을 제외한 살아 있는 아군 중 가장 왼쪽에게 상태 효과 (Phase 4-B)
+    AllyHeal    // 자신을 제외한 살아 있는 아군 중 체력이 줄어든 가장 왼쪽 아군 회복 (Phase 4-B)
 }
 
 /// <summary>
-/// 적의 행동 하나 = 종류 + 수치.
-/// 예) 공격 7, 방어 5
+/// 적의 행동 하나 = 종류 + 수치 (+ 강화 행동이면 효과 종류와 지속시간).
+/// 예) 공격 7, 방어 5, 자기 강화 공격력 +2 (2턴), 아군 회복 6
 /// [System.Serializable] 덕분에 EnemyData 인스펙터에서 리스트로 편집할 수 있다.
 /// </summary>
 [System.Serializable]
@@ -21,7 +24,12 @@ public class EnemyActionData
 {
     public EnemyActionType type = EnemyActionType.Attack;
     [Min(0)]
-    public int value = 5;
+    public int value = 5;   // 공격: 피해 / 방어: 방어도 / SelfBuff·AllyBuff: 효과 수치 / AllyHeal: 회복량
+
+    [Header("SelfBuff·AllyBuff 전용")]
+    public StatusEffectType statusEffect = StatusEffectType.None;   // 걸어 줄 상태 효과 (예: 공격력 증가)
+    [Min(0)]
+    public int duration = 0;                                        // 지속시간(턴)
 
     /// <summary>행동 예고용 문장. 예: "공격 7" (예고와 실행이 같은 데이터를 쓰므로 항상 일치한다)</summary>
     public string GetPreviewText()

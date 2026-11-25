@@ -198,11 +198,27 @@ public class Combatant
     /// </summary>
     public void TickStatusEffects()
     {
+        TickStatusEffects(StatusEffectType.None);
+    }
+
+    /// <summary>
+    /// 지속시간을 1 줄이되, skipType 종류의 효과는 이번에는 줄이지 않는다. (Phase 4-B)
+    /// 적이 자기 행동 중에 자기 자신에게 건 효과(SelfBuff)는 그 행동이 끝날 때 줄이지 않는다는 규칙에 쓴다.
+    /// 새로 건 경우와 지속시간을 갱신한 경우 모두 해당한다. skipType = None이면 모든 효과가 줄어든다.
+    /// </summary>
+    public void TickStatusEffects(StatusEffectType skipType)
+    {
         string ownerName = GetLogName();
         // 뒤에서부터 돌면 중간에 지워도 순서가 꼬이지 않는다.
         for (int i = statusEffects.Count - 1; i >= 0; i--)
         {
             StatusEffect effect = statusEffects[i];
+            if (skipType != StatusEffectType.None && effect.type == skipType)
+            {
+                Debug.Log("[효과] " + ownerName + ": " + effect.ToShortText()
+                          + " - 이번 행동에 자신에게 건 효과라서 지속시간을 줄이지 않는다 (남은 " + effect.turnsLeft + "턴)");
+                continue;
+            }
             effect.turnsLeft--;
             if (effect.turnsLeft <= 0)
             {
