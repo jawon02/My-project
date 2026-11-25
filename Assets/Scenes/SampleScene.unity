@@ -132,6 +132,7 @@ GameObject:
   - component: {fileID: 155731899}
   - component: {fileID: 155731903}
   - component: {fileID: 155731902}
+  - component: {fileID: 155731904}
   m_Layer: 0
   m_Name: CombatManager
   m_TagString: Untagged
@@ -220,6 +221,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bb3770073588e18488e86ebf157a42ae, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TargetSelectionTest
+  combat: {fileID: 155731900}
+--- !u!114 &155731904
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 155731898}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ca4fcb84cfd2e7140ab92b0b5e550418, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyBuffTest
   combat: {fileID: 155731900}
 --- !u!1 &300289436
 GameObject:
@@ -866,24 +880,24 @@ MonoBehaviour:
   - data: {fileID: 11400000, guid: 9ffe3987d58c71846ab3f03f5441d088, type: 2}
     isUpgraded: 0
   drawPile:
-  - data: {fileID: 11400000, guid: f91d6e6daa838384987e6b3ae13e4930, type: 2}
-    isUpgraded: 0
   - data: {fileID: 11400000, guid: 717dc9b8e2ff79d41ba3df3e40243ff1, type: 2}
     isUpgraded: 0
   - data: {fileID: 11400000, guid: 4f7f496209de9f84e97b6d2a9c057adb, type: 2}
     isUpgraded: 0
-  - data: {fileID: 11400000, guid: 717dc9b8e2ff79d41ba3df3e40243ff1, type: 2}
+  - data: {fileID: 11400000, guid: 1cce00b5da91fc347b2e68d37a0736bf, type: 2}
+    isUpgraded: 0
+  - data: {fileID: 11400000, guid: 1cce00b5da91fc347b2e68d37a0736bf, type: 2}
     isUpgraded: 0
   - data: {fileID: 11400000, guid: 717dc9b8e2ff79d41ba3df3e40243ff1, type: 2}
     isUpgraded: 0
   hand:
-  - data: {fileID: 11400000, guid: 717dc9b8e2ff79d41ba3df3e40243ff1, type: 2}
-    isUpgraded: 0
-  - data: {fileID: 11400000, guid: 1cce00b5da91fc347b2e68d37a0736bf, type: 2}
+  - data: {fileID: 11400000, guid: f91d6e6daa838384987e6b3ae13e4930, type: 2}
     isUpgraded: 0
   - data: {fileID: 11400000, guid: 9ffe3987d58c71846ab3f03f5441d088, type: 2}
     isUpgraded: 0
-  - data: {fileID: 11400000, guid: 1cce00b5da91fc347b2e68d37a0736bf, type: 2}
+  - data: {fileID: 11400000, guid: 717dc9b8e2ff79d41ba3df3e40243ff1, type: 2}
+    isUpgraded: 0
+  - data: {fileID: 11400000, guid: 717dc9b8e2ff79d41ba3df3e40243ff1, type: 2}
     isUpgraded: 0
   - data: {fileID: 11400000, guid: 1cce00b5da91fc347b2e68d37a0736bf, type: 2}
     isUpgraded: 0
